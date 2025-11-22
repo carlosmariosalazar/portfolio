@@ -1,0 +1,34 @@
+[project]
+name = "portfolio"
+version = "0.1.0"
+description = "Ultrasound Clinic Study Simulation"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "data_generation"
+]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.1.0",
+    "pre-commit>=4.4.0",
+    "pytest>=9.0.1",
+    "ruff>=0.14.5",
+]
+
+[tool.uv.workspace]
+members = ["packages/*"] 
+
+[tool.uv.sources]
+data_generation = {workspace = true}
+
+[tool.ruff]
+line-length = 88
+indent-width = 4
+
+[tool.ruff.format]
+quote-style = "double"
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = ["ANN", "S", "FBT", "BLE", "A", "C4", "DTZ", "EM", "FIX", "LOG", "PIE", "T20", "PYI", "PT", "RET", "SIM", "TC", "ARG", "PTH", "I", "N", "E", "W", "D", "F", "RUF"]
