@@ -6,5 +6,8 @@ dist/
 wheels/
 *.egg-info
 
+# Temporal files generated for testing
+tmp/
+
 # Virtual environments
 .venv

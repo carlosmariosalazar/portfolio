@@ -13,7 +13,14 @@ dev = [
     "ipykernel>=7.1.0",
     "pre-commit>=4.4.0",
     "pytest>=9.0.1",
+    "pytest-coverage>=0.0",
     "ruff>=0.14.5",
+    "ty>=0.0.1a29",
+]
+
+[tool.pytest.ini_options]
+pythonpath = [
+    "packages"
 ]
 
 [tool.uv.workspace]
@@ -25,10 +32,14 @@ data_generation = {workspace = true}
 [tool.ruff]
 line-length = 88
 indent-width = 4
+per-file-ignores = {"**/test_*.py" = ["D"]}
 
 [tool.ruff.format]
 quote-style = "double"
 line-ending = "auto"
 
 [tool.ruff.lint]
-select = ["ANN", "S", "FBT", "BLE", "A", "C4", "DTZ", "EM", "FIX", "LOG", "PIE", "T20", "PYI", "PT", "RET", "SIM", "TC", "ARG", "PTH", "I", "N", "E", "W", "D", "F", "RUF"]
+select = ["ANN", "FBT", "BLE", "A", "C4", "DTZ", "EM", "FIX", "LOG", "PIE", "T20", "PYI", "PT", "RET", "SIM", "TC", "ARG", "PTH", "I", "N", "E", "W", "D", "F", "RUF"]
+
+[tool.ty.environment]
+root = ["./packages"]
