@@ -4,10 +4,11 @@ This is a submodule from ORM module, it contains the patients table, it is
 required by Studies table to create a study.
 
 """
+from datetime import date
 
 from shared.src.orm.base import Base
 from shared.src.orm.lookup import DocumentType, Gender
-from sqlalchemy import Date, ForeignKey, String
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
@@ -43,7 +44,7 @@ class Patient(Base):
     identification: Mapped[str] = mapped_column(String(10), unique=True)
     name: Mapped[str] = mapped_column(String(30))
     id_gender: Mapped[int] = mapped_column(ForeignKey("genders.id_gender"))
-    date_of_birth: Mapped[Date]
+    date_of_birth: Mapped[date]
 
     patient_document_type: Mapped[DocumentType] = relationship()
     patient_gender: Mapped[Gender] = relationship()

@@ -24,11 +24,12 @@ Referral's table
     related to a Study
 
 """
+from datetime import date
 
 from shared.src.orm.base import Base
 from shared.src.orm.lookup import Physician, Procedure, Referral
 from shared.src.orm.patient import Patient
-from sqlalchemy import Date, ForeignKey
+from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
@@ -60,7 +61,7 @@ class Study(Base):
 
     id_study: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     id_patient: Mapped[int] = mapped_column(ForeignKey("patients.id_patient"))
-    study_date: Mapped[Date]
+    study_date: Mapped[date]
     id_procedure: Mapped[int] = mapped_column(ForeignKey("procedures.id_procedure"))
     id_physician: Mapped[int] = mapped_column(ForeignKey("physicians.id_physician"))
     id_referral: Mapped[int] = mapped_column(ForeignKey("referrals.id_referral"))
