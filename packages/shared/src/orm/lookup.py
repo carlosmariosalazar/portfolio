@@ -82,7 +82,8 @@ class Gender(Base):
     __tablename__ = "genders"
 
     id_gender: Mapped[int] = mapped_column(primary_key=True, autoincrement="auto")
-    gender_abb: Mapped[str] = mapped_column(Enum(GenderAbbreviation), unique=True)
+    gender_abb: Mapped[GenderAbbreviation] = mapped_column(
+        Enum(GenderAbbreviation), unique=True)
     gender_name: Mapped[GenderName] = mapped_column(Enum(GenderName), unique=True)
 
 
