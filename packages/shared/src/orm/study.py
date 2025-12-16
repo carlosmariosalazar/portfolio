@@ -59,6 +59,8 @@ class Study(Base):
 
     """
 
+    __tablename__ = "studies"
+
     id_study: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     id_patient: Mapped[int] = mapped_column(ForeignKey("patients.id_patient"))
     study_date: Mapped[date]

@@ -37,6 +37,8 @@ class Patient(Base):
 
     """
 
+    __tablename__ = "patients"
+
     id_patient: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     id_document_type: Mapped[int] = mapped_column(
         ForeignKey("document_types.id_document_type")
