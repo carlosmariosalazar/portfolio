@@ -7,7 +7,7 @@ Query DTOs are intended to be used in a data presentation layer.
 
 from datetime import date
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class GenderQueryDTO(BaseModel):
@@ -25,6 +25,8 @@ class GenderQueryDTO(BaseModel):
     :param gender_name:
         Gender name or description `(MALE, FEMALE)`
     """
+
+    model_config = ConfigDict(from_attributes= True)
 
     id_gender: int
     gender_abb: str
@@ -47,6 +49,8 @@ class DocumentTypeQueryDTO(BaseModel):
         Document type name or description e.g. `(REGISTRO CIVIL, TARJETA DE IDENTIDAD,
         CEDULA DE CIUDADANIA)`
     """
+
+    model_config = ConfigDict(from_attributes= True)
 
     id_document_type: int
     document_type_abb: str
@@ -72,6 +76,8 @@ class ProcedureQueryDTO(BaseModel):
         Procedure price ($`300.000` COP)
     """
 
+    model_config = ConfigDict(from_attributes= True)
+
     id_procedure: int
     cups: str
     procedure_name: str
@@ -95,6 +101,8 @@ class PhysicianQueryDTO(BaseModel):
 
     """
 
+    model_config = ConfigDict(from_attributes= True)
+
     id_physician: int
     physician_rm: str
     physician_name: str
@@ -116,6 +124,8 @@ class ReferralQueryDTO(BaseModel):
         Referral full name (e.g. `TEST REFERRAL A`)
 
     """
+
+    model_config = ConfigDict(from_attributes= True)
 
     id_referral: int
     referral_rm: str
@@ -147,6 +157,8 @@ class PatientQueryDTO(BaseModel):
     :param name:
         The full legal name of the patient
     """
+
+    model_config = ConfigDict(from_attributes= True)
 
     id_patient: int
     patient_document_type: DocumentTypeQueryDTO
@@ -180,6 +192,8 @@ class StudyQueryDTO(BaseModel):
     :param study_referral:
         The Referral lookup entity (`ReferralQueryDTO`) associated with this study
     """
+
+    model_config = ConfigDict(from_attributes= True)
 
     id_study: int
     study_patient: PatientQueryDTO
