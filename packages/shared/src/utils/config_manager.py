@@ -11,7 +11,8 @@ from typing import Any, ClassVar, Dict, Generic, Type, TypeVar
 import yaml
 from pydantic import BaseModel
 
-T = TypeVar(name= "T", bound= BaseModel)
+T = TypeVar(name="T", bound=BaseModel)
+
 
 class ConfigLoader(ABC, Generic[T]):
     """Abstract base class for config file loaders.
@@ -26,7 +27,7 @@ class ConfigLoader(ABC, Generic[T]):
         :param model: Pydantic model class for validation
         :type model: Type[T]
         """
-        self._model= model
+        self._model = model
 
     @abstractmethod
     def _parse_file(self, file_path: Path) -> Dict[str, Any]:
@@ -38,7 +39,6 @@ class ConfigLoader(ABC, Generic[T]):
         :rtype: Dict[str, Any]
         """
         ...
-
 
     def load(self, file_path: Path) -> T:
         """Load and validate configuration from file.
@@ -54,8 +54,8 @@ class ConfigLoader(ABC, Generic[T]):
             msg = f"Config file not found: {file_path}"
             raise FileNotFoundError(msg)
 
-        raw = self._parse_file(file_path= file_path)
-        return self._model.model_validate(obj= raw)
+        raw = self._parse_file(file_path=file_path)
+        return self._model.model_validate(obj=raw)
 
 
 class JSONConfigLoader(ConfigLoader[T]):
@@ -71,7 +71,7 @@ class JSONConfigLoader(ConfigLoader[T]):
         :raises ValueError: If JSON file has a format error
         """
         try:
-            with file_path.open(mode= "r", encoding= "utf-8") as f:
+            with file_path.open(mode="r", encoding="utf-8") as f:
                 return json.load(f)
 
         except json.JSONDecodeError as e:
@@ -83,7 +83,7 @@ class YAMLConfigLoader(ConfigLoader[T]):
     """YAML configuration file loader."""
 
     def _parse_file(self, file_path: Path) -> Dict[str, Any]:
-        with file_path.open(mode= "r", encoding= "utf-8") as f:
+        with file_path.open(mode="r", encoding="utf-8") as f:
             return yaml.safe_load(f)
 
 
@@ -95,7 +95,7 @@ class ConfigLoaderFactory:
 
     _loaders: ClassVar[Dict[str, Type[ConfigLoader]]] = {
         ".json": JSONConfigLoader,
-        ".yaml": YAMLConfigLoader
+        ".yaml": YAMLConfigLoader,
     }
 
     @classmethod
@@ -144,12 +144,7 @@ class ConfigManager:
         """Initialize the config manager."""
         self._configs: Dict[str, BaseModel] = {}
 
-    def load_config(
-            self,
-            name: str,
-            file_path: Path,
-            model: Type[T]
-            ) -> T:
+    def load_config(self, name: str, file_path: Path, model: Type[T]) -> T:
         """Load and cache a configuration file.
 
         :param name: Identifier for this configuration
