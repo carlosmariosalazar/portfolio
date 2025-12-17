@@ -19,21 +19,33 @@ class Patient(Base):
 
     :param id_patient:
         Autoincremental primary key of the table
+    :type id_patient:
+        int
 
     :param id_document_type:
         Foreing key from `DocumentType` table
+    :type id_document_type:
+        int
 
     :param identification:
         Patient unique identification number
+    :type identification:
+        str
 
     :param name:
         Patient name
+    :type name:
+        str
 
     :param id_gender:
         Foreign key from `Gender` table
+    :type id_gender:
+        int
 
     :param date_of_birth:
-        Patient date of birth in `YYYY-MM-DD` format
+        Patient date of birth in `datetime.date` format
+    :type date_of_birth:
+        datetime.date
 
     """
 

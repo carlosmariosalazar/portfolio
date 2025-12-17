@@ -69,14 +69,20 @@ class Gender(Base):
 
     :param id_gender:
         Autoincremental primary key of the table
+    :type id_gender:
+        int
 
     :param gender_abb:
-        Gender abbreviature `('M', 'F')` constrained by `GenderAbbreviation` Enum
-        and unique index
+        Gender abbreviature `('M', 'F')` constrained by `GenderAbbreviation`
+        Enum and unique index
+    :type gender_abb:
+        str
 
     :param gender_name:
-        Gender name `('MALE', 'FEMALE')` constrained by `GenderName` Enum and unique
-        index.
+        Gender name `('MALE', 'FEMALE')` constrained by `GenderName`
+        Enum and unique index.
+    :type gender_name:
+        str
     """
 
     __tablename__ = "genders"
@@ -94,14 +100,20 @@ class DocumentType(Base):
 
     :param id_document_type:
         Autoincremental primary key of the table
+    :type id_document_type:
+        int
 
     :param document_type_abb:
         Document type abbreviature `(RC, TI, CC)` constrained
         by `DocumentTypeAbbreviation` Enum and unique index
+    :type document_type_abb:
+        str
 
     :param document_type_name:
         Document type name constrained by `DocumentTypeName` Enum and unique
         index
+    :type document_type_name:
+        str
     """
 
     __tablename__ = "document_types"
@@ -124,16 +136,23 @@ class Procedure(Base):
 
     :param id_procedure:
         Autoincremental primary key of the table
+    :type id_procedure:
+        int
 
     :param cups:
         Six digits nunmeric unique code for each procedure
+    :type cups:
+        str
 
     :param procedure_name:
         Ultrasound procedure name
+    :type procedure_name:
+        str
 
     :param procedure_price:
         Procedure pricing
-
+    :type procedure_price:
+        str
     """
 
     __tablename__ = "procedures"
@@ -151,12 +170,18 @@ class Physician(Base):
 
     :param id_physician:
         Autoincremental primary key of the table
+    :type id_physician:
+        int
 
     :param physician_rm:
         Four digits numeric code unique for each physician
+    :type physician_rm:
+        str
 
     :param physician_name:
         Phyisician name
+    :type physician_name:
+        str
     """
 
     __tablename__ = "physicians"

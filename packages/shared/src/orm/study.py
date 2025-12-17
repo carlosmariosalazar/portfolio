@@ -40,22 +40,33 @@ class Study(Base):
 
     :param id_study:
         Autoincremental primary key of the table
+    :type id_study:
+        int
 
     :param id_patient:
         Foreing key from `Patient` table
+    :type id_patient:
+        int
 
     :param study_date:
-        Date when procedure performed in `YYYY-MM-DD` format
+        Date when procedure performed in `datetime.date` format
+    :type study_date:
+        datetime.date
 
     :param id_procedure:
         Foreign key from `Procedure` table
+    :type id_procedure:
+        int
 
     :param id_physician:
         Foreign key from `Physician` table
+    :type id_physician:
+        int
 
     :param id_referral:
         Foreign key from `Referral` table
-
+    :type id_referral:
+        int
 
     """
 
