@@ -33,8 +33,12 @@ from shared.src.orm.lookup import (
     Gender,
     GenderAbbreviation,
     GenderName,
+    Physician,
+    Procedure,
+    Referral,
 )
 from shared.src.orm.patient import Patient
+from shared.src.orm.study import Study
 from shared.src.utils.config_manager import ConfigManager
 
 
@@ -242,6 +246,67 @@ def patient_orm(gender_orm: Gender, document_type_orm: DocumentType) -> Patient:
     patient.patient_document_type = document_type_orm
 
     return patient
+
+@pytest.fixture
+def procedure_orm() -> Procedure:
+    """Provide a valid Procedure ORM instance.
+
+    :return: Procedure ORM instance
+    :rtype: Procedure
+    """
+    procedure = Procedure()
+    procedure.id_procedure = 1
+    procedure.cups = "000000"
+    procedure.procedure_name = "TEST PROCEDURE"
+    procedure.procedure_price = 100
+    return procedure
+
+@pytest.fixture
+def physician_orm() -> Physician:
+    """Provide a valid Physician ORM instance.
+
+    :return: Physician ORM instance
+    :rtype: Physician
+    """
+    physician = Physician()
+    physician.id_physician = 1
+    physician.physician_rm = "123"
+    physician.physician_name = "TEST PHYSICIAN"
+    return physician
+
+@pytest.fixture
+def referral_orm() -> Referral:
+    """Provide a valid Referral ORM instance.
+
+    :return: Referral ORM instance
+    :rtype: Referral
+    """
+    referral = Referral()
+    referral.id_referral = 1
+    referral.referral_rm = "999"
+    referral.referral_name = "TEST REFERRAL"
+    return referral
+
+@pytest.fixture
+def study_orm(
+    patient_orm: Patient,
+    procedure_orm: Procedure,
+    physician_orm: Physician,
+    referral_orm: Referral
+    ) -> Study:
+    """Provide a valid Study ORM instance.
+
+    :return: Study ORM instance
+    :rtype: Study
+    """
+    study = Study()
+    study.id_study = 1
+    study.study_date = datetime.now(tz= timezone.utc).date()
+    study.study_patient = patient_orm
+    study.study_procedure = procedure_orm
+    study.study_physician = physician_orm
+    study.study_referral = referral_orm
+    return study
 
 @pytest.fixture
 def mapper_registry() -> MapperRegistry:

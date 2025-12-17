@@ -3,7 +3,15 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 from shared.src.dto.create import CreateGenderDTO, CreatePatientDTO
-from shared.src.dto.query import DocumentTypeQueryDTO, GenderQueryDTO, PatientQueryDTO
+from shared.src.dto.query import (
+    DocumentTypeQueryDTO,
+    GenderQueryDTO,
+    PatientQueryDTO,
+    PhysicianQueryDTO,
+    ProcedureQueryDTO,
+    ReferralQueryDTO,
+    StudyQueryDTO,
+)
 from shared.src.mappers.base import AutoToDTOMapper, AutoToORMMapper, MapperRegistry
 from shared.src.mappers.mappers import (
     DocumentTypeToDTOMapper,
@@ -11,9 +19,14 @@ from shared.src.mappers.mappers import (
     GenderToORMMapper,
     PatientToDTOMapper,
     PatientToORMMapper,
+    PhysicianToDTOMapper,
+    ProcedureToDTOMapper,
+    ReferralToDTOMapper,
+    StudyToDTOMapper,
 )
 from shared.src.orm.lookup import Gender, GenderAbbreviation, GenderName
 from shared.src.orm.patient import Patient
+from shared.src.orm.study import Study
 
 
 class TestAutoToORMMapper:
@@ -183,6 +196,57 @@ class TestPatientToDTOMapper:
 
         with pytest.raises(ValidationError) as _:
             mapper.to_dto(patient_orm)
+
+class TestStudyToDTOMapper:
+    """Test suite for StudyToDTOMapper."""
+
+    def test_maps_study_orm_to_query_dto(
+        self,
+        study_orm: Study
+    ) -> None:
+        """
+        Test Study ORM mapping to Query DTO with nested Patient,
+        Procedure Physician and Referral.
+        """
+
+        gender_mapper = GenderToDTOMapper()
+        document_type_mapper = DocumentTypeToDTOMapper()
+        procedure_mapper = ProcedureToDTOMapper()
+        physician_mapper = PhysicianToDTOMapper()
+        referral_mapper = ReferralToDTOMapper()
+
+        patient_mapper = PatientToDTOMapper(gender_mapper, document_type_mapper)
+
+        mapper = StudyToDTOMapper(
+            patient_mapper= patient_mapper,
+            procedure_mapper= procedure_mapper,
+            physician_mapper= physician_mapper,
+            referral_mapper= referral_mapper
+        )
+
+        study_dto = mapper.to_dto(study_orm)
+
+        assert isinstance(study_dto, StudyQueryDTO)
+        assert study_dto.id_study == 1
+        assert study_dto.study_date == datetime.now(tz= timezone.utc).date()
+
+        assert isinstance(study_dto.study_patient, PatientQueryDTO)
+        assert study_dto.study_patient.identification == "123"
+        assert study_dto.study_patient.name == "TEST PATIENT"
+
+        assert isinstance(study_dto.study_procedure, ProcedureQueryDTO)
+        assert study_dto.study_procedure.id_procedure == 1
+        assert study_dto.study_procedure.cups == "000000"
+        assert study_dto.study_procedure.procedure_name == "TEST PROCEDURE"
+        assert study_dto.study_procedure.procedure_price == 100
+
+        assert isinstance(study_dto.study_physician, PhysicianQueryDTO)
+        assert study_dto.study_physician.id_physician == 1
+        assert study_dto.study_physician.physician_name == "TEST PHYSICIAN"
+
+        assert isinstance(study_dto.study_referral, ReferralQueryDTO)
+        assert study_dto.study_referral.id_referral == 1
+        assert study_dto.study_referral.referral_name == "TEST REFERRAL"
 
 class TestMapperRegistry:
     """Test suite for MapperRegistry."""
