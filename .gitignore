@@ -5,6 +5,7 @@ build/
 dist/
 wheels/
 *.egg-info
+.vscode
 
 # Temporal files generated for testing
 tmp/
