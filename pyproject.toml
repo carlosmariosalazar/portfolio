@@ -5,6 +5,7 @@ description = "Ultrasound Clinic Study Simulation"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "shared",
     "data_generation"
 ]
 
@@ -28,6 +29,7 @@ members = ["packages/*"]
 
 [tool.uv.sources]
 data_generation = {workspace = true}
+shared = {workspace = true}
 
 [tool.ruff]
 line-length = 88
