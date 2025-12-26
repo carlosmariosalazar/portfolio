@@ -7,6 +7,7 @@ data generation.
 
 import random
 from abc import ABC, abstractmethod
+from datetime import date, timedelta
 from enum import StrEnum
 from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
 
@@ -132,7 +133,6 @@ class ConstraintConfig(BaseModel):
 
     model_config = ConfigDict(frozen=False)
 
-    type: str = Field(pattern="^(hard|soft|exclusion)$")
     rule: str = Field(min_length=1)
     params: Dict[str, Any]
     error_message: Optional[str] = None
@@ -154,6 +154,75 @@ class ConstraintViolation(BaseModel):
     constraint: ConstraintConfig
     entity_data: Dict[str, Any]
     message: str
+
+
+class TemporalPatternsConfig(BaseModel):
+    """Configuration for temporal patterns probability.
+
+    :param day_of_week: Weights for each day of week
+    :type day_of_week: Dict[str, float]
+    :param day_of_month: Weights for a day of month range
+    :type day_of_month: Dict[str, Any]
+    :param month_of_year: Weights for each month of the year
+    :type month_of_year: Dict[str, float]
+    """
+
+    model_config = ConfigDict(frozen= False)
+
+    day_of_week: Dict[int, float] = Field(min_length= 7, max_length= 7)
+    day_of_month: Dict[int, Any] = Field(min_length= 1, max_length= 4)
+    month_of_year: Dict[int, float] = Field(min_length= 12, max_length= 12)
+
+class GrowthModelConfig(BaseModel):
+    """Configuration for growth trend model.
+
+    :param type: Type of trend (linear, exponential, etc.)
+    :type type: str
+    :param baseline: Baseline date for growth
+    :type baseline: datetime.date
+    :param baseline_volume: Reference study volume
+    :type baseline_volume: int
+    :param annual_growh_rate: Growth rate (between 0 and 1)
+    :type annual_growth_rate: float
+    :param daily_variation: Noise variation (between 0 and 1)
+    :type daily_variation: float
+    """
+
+    model_config = ConfigDict(frozen= False)
+
+    type: str
+    baseline: date
+    baseline_volume: int = Field(default= 100)
+    annual_growth_rate: float = Field(gt= 0, lt= 1)
+    daily_variation: float = Field(gt= 0, lt= 1)
+
+class StaticGenerationConfig(BaseModel):
+    """Configuration for static data generation.
+
+    :param enabled: Static generation enabled (default True).
+    :type enabled: bool
+    :param date_range: Date range for data generation.
+    :type date_range: Dict[str, date]
+
+    :raise ValueError: If end date is first than start date
+    """
+
+    model_config = ConfigDict(frozen= False)
+
+    enabled: bool = Field(default= True)
+    samples: int = Field(default= 1000)
+    date_range: Dict[str, date]
+
+    @field_validator("date_range", mode= "after")
+    @classmethod
+    def validate(cls, v: Dict[str, date]) -> Dict[str, date]:
+        """Validate that start date is first than end date."""
+        if v["start"] > v["end"]:
+            msg = f"""
+                Start date must be first than end date, got ({v['start']}, {v['end']})
+            """
+            raise ValueError(msg)
+        return v
 
 
 class DistributionStrategy(ABC, Generic[T]):
@@ -417,7 +486,7 @@ class ProcedureGenderPreventer(ConstraintPreventer):
             if (
                 adjusted_config.weights
                 and required_procedure in adjusted_config.weights
-            ):
+                ):
                 adjusted_config.weights[required_procedure] = 0.0
             return adjusted_config
 
@@ -459,16 +528,124 @@ class ProcedureAgeRangePreventer(ConstraintPreventer):
         max_age = constraint.params.get("max_age")
 
         # If age is outside range, zero out the procedure
-        if age is not None and required_procedure and (age < min_age or age > max_age):
+        if age and required_procedure and (age < min_age or age > max_age):
             adjusted_config = config.model_copy(deep=True)
             if (
                 adjusted_config.weights
                 and required_procedure in adjusted_config.weights
-            ):
+                ):
                 adjusted_config.weights[required_procedure] = 0.0
             return adjusted_config
-
         return config
+
+
+class GrowthTrendStrategy(ABC):
+    """Base class for trend stragies."""
+
+    @abstractmethod
+    def get_trend_weight(self, date: date) -> float:
+        """Compute trend weight given a date.
+
+        :param date: Date to compute trend weight
+        :type date: datetime.date
+
+        :return: Trend weight
+        :rtype: float
+        """
+        ...
+
+class GrowthLinearTrend(GrowthTrendStrategy):
+    """Implements a linear growh trend."""
+
+    def __init__(
+            self,
+            config: GrowthModelConfig,
+            days: int
+            ) -> None:
+        """Intialize linear growth trend strategy.
+
+        :param config: Configuration of temporal patterns
+        :type config: TemporalPatternsConfig
+        :param days: Number of days in date range
+        :type days: int
+        """
+        self._config = config
+        self._days = days
+
+    def get_trend_weight(self, date: date) -> float:
+        """Compute linear trend weight given a date.
+
+        :param date: Date to compute linear trend weight
+        :type date: datetime.date
+
+        :return: Linear growth trend weight
+        :rtype: float
+        """
+        day_idx = (date - self._config.baseline).days
+        return 1 + self._config.annual_growth_rate * (day_idx / self._days)
+
+
+class DateSampler:
+    """Date sampler engine.
+
+    Manages date samples with condinional probability for static data generation
+    """
+
+    def __init__(
+            self,
+            gen_config: StaticGenerationConfig,
+            temp_config: TemporalPatternsConfig,
+            trend_strategy: GrowthTrendStrategy,
+            ) -> None:
+        """Initialize Date Sampler engine."""
+        self._gen_config = gen_config
+        self._temp_config = temp_config
+        self._trend_strategy = trend_strategy
+        self._dates = self._get_date_ranges()
+        self._weights = self._get_date_weights()
+
+    def _get_date_ranges(self) -> List[date]:
+        """Get the dates in range.
+
+        :return: List of dates in range
+        :rtype: List[date]
+        """
+        days = (
+            self._gen_config.date_range["end"] - self._gen_config.date_range["start"]
+            ).days
+        return [
+            self._gen_config.date_range["start"] + timedelta(days= i)
+            for i in range(days + 1)
+            ]
+
+    def _get_date_weights(self) -> List[float]:
+
+        weights = []
+
+        for _date in self._dates:
+
+            week_day = _date.weekday()
+            day = _date.day
+            month = _date.month
+
+            week_day_weight = self._temp_config.day_of_week.get(week_day)
+            day_weight = self._temp_config.day_of_month.get(day, 1)
+            month_weight = self._temp_config.month_of_year.get(month)
+
+            trend_weight = self._trend_strategy.get_trend_weight(_date)
+
+            weights.append( week_day_weight * day_weight * month_weight * trend_weight)
+
+        return weights
+
+    def sample_dates(self) -> List[date]:
+        """Get the date samples.
+
+        :return: List of date samples
+        :rtype: List[datetime.date]
+        """
+        n = self._gen_config.samples
+        return random.choices(self._dates, weights= self._weights, k= n)
 
 
 class ProbabilityEngine:
@@ -629,13 +806,13 @@ class ProbabilityEngine:
 
         # Apply preventive constraints
         for constraint in self._constraints:
-            if constraint.type != "hard":
-                continue
-
             preventer = self._constraint_preventers.get(constraint.rule)
             if preventer:
                 config = preventer.apply_prevention(
-                    constraint, distribution_name, config, context
+                    constraint= constraint,
+                    distribution_name= distribution_name,
+                    config= config,
+                    context= context
                 )
 
         return config

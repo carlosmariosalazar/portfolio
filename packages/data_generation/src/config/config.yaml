@@ -1,0 +1,264 @@
+# ============================================================================
+# CLINIC DATA GENERATION PROFILE
+# ============================================================================
+
+metadata:
+  clinic_type: "general_ultrasound"
+  profile_name: "basic_clinic_profile"
+  version: "1.0"
+  description: "Simplified clinic profile for data generation"
+
+# ============================================================================
+# DISTRIBUTIONS
+# ============================================================================
+
+distributions:
+  
+  # Patient Demographics (Independent)
+  gender:
+    type: "categorical"
+    weights:
+      female: 0.65
+      male: 0.35
+  
+  age:
+    type: "weighted_ranges"
+    ranges:
+      - range: [0, 6]      # Minor
+        weight: 0.15
+      - range: [7, 17]     # Teen
+        weight: 0.10
+      - range: [18, 80]    # Adult
+        weight: 0.75
+  
+  # Study Attributes (Context-Dependent)
+  procedures:
+    type: "categorical"
+    weights:
+      obstetric_ultrasound: 0.30
+      abdominal_ultrasound: 0.25
+      thyroid_ultrasound: 0.20
+      cardiac_echo: 0.15
+      pediatric_ultrasound: 0.10
+  
+  physicians:
+    type: "categorical"
+    weights:
+      dr_maria_gomez: 0.40      # High volume
+      dr_carlos_ruiz: 0.35       # High volume
+      dr_ana_lopez: 0.25         # Medium volume
+  
+  referrals:
+    type: "categorical"
+    weights:
+      internal_medicine: 0.60
+      obgyn: 0.40
+
+# ============================================================================
+# CORRELATIONS (Conditional Probability Adjustments)
+# ============================================================================
+
+correlations:
+  
+  # Female patients → more obstetric and thyroid procedures
+  - condition:
+      field: "gender"
+      value: "female"
+    adjustments:
+      procedures:
+        obstetric_ultrasound: 0.50
+        thyroid_ultrasound: 0.25
+        cardiac_echo: 0.10
+  
+  # Male patients → more cardiac, no obstetric
+  - condition:
+      field: "gender"
+      value: "male"
+    adjustments:
+      procedures:
+        cardiac_echo: 0.35
+        abdominal_ultrasound: 0.30
+        obstetric_ultrasound: 0.0
+  
+  # Minors (0-6) → pediatric procedures
+  - condition:
+      field: "age"
+      range: [0, 6]
+    adjustments:
+      procedures:
+        pediatric_ultrasound: 0.60
+        abdominal_ultrasound: 0.25
+        obstetric_ultrasound: 0.0
+        cardiac_echo: 0.05
+  
+  # Teens (7-17) → mixed procedures
+  - condition:
+      field: "age"
+      range: [7, 17]
+    adjustments:
+      procedures:
+        pediatric_ultrasound: 0.30
+        thyroid_ultrasound: 0.25
+        abdominal_ultrasound: 0.25
+        obstetric_ultrasound: 0.0
+  
+  # Adults (18+) → more cardiac
+  - condition:
+      field: "age"
+      range: [18, 100]
+    adjustments:
+      procedures:
+        cardiac_echo: 0.30
+        thyroid_ultrasound: 0.25
+        abdominal_ultrasound: 0.25
+  
+  # Dr. Maria specializes in OB/GYN procedures
+  - condition:
+      field: "procedure"
+      value: "obstetric_ultrasound"
+    adjustments:
+      physicians:
+        dr_maria_gomez: 0.70
+        dr_carlos_ruiz: 0.20
+        dr_ana_lopez: 0.10
+  
+  # Dr. Carlos specializes in cardiac
+  - condition:
+      field: "procedure"
+      value: "cardiac_echo"
+    adjustments:
+      physicians:
+        dr_carlos_ruiz: 0.65
+        dr_maria_gomez: 0.20
+        dr_ana_lopez: 0.15
+  
+  # OB/GYN referrals for obstetric procedures
+  - condition:
+      field: "procedure"
+      value: "obstetric_ultrasound"
+    adjustments:
+      referrals:
+        obgyn: 0.85
+        internal_medicine: 0.15
+
+# ============================================================================
+# CONSTRAINTS (Preventive Business Rules)
+# ============================================================================
+
+constraints:
+  
+  # HARD CONSTRAINTS (Completely prevent)
+  
+  - type: "hard"
+    rule: "procedure_requires_gender"
+    params:
+      procedure: "obstetric_ultrasound"
+      required_gender: "female"
+    error_message: "Obstetric ultrasound requires female patient"
+  
+  - type: "hard"
+    rule: "procedure_requires_age_range"
+    params:
+      procedure: "obstetric_ultrasound"
+      min_age: 15
+      max_age: 50
+    error_message: "Obstetric ultrasound requires age 15-50"
+  
+  
+  # SOFT CONSTRAINTS (Reduce probability but don't eliminate)
+  
+  - type: "soft"
+    rule: "physician_specialization"
+    params:
+      physician: "dr_maria_gomez"
+      uncommon_procedures: ["cardiac_echo"]
+      penalty_factor: 0.3
+    error_message: "Dr. Maria rarely performs cardiac procedures"
+  
+  - type: "soft"
+    rule: "physician_specialization"
+    params:
+      physician: "dr_carlos_ruiz"
+      uncommon_procedures: ["obstetric_ultrasound", "pediatric_ultrasound"]
+      penalty_factor: 0.2
+    error_message: "Dr. Carlos rarely performs OB or pediatric procedures"
+  
+  - type: "soft"
+    rule: "referral_procedure_uncommon"
+    params:
+      referral_source: "internal_medicine"
+      uncommon_procedures: ["obstetric_ultrasound"]
+      penalty_factor: 0.4
+    error_message: "Internal medicine rarely refers for obstetric procedures"
+
+# ============================================================================
+# TEMPORAL PATTERNS
+# ============================================================================
+
+temporal_patterns:
+  
+  # Day of week distribution
+  day_of_week:
+    0: 0.22        # Busiest (post-weekend) - monday
+    1: 0.20        # tuesday
+    2: 0.18        # wednesday
+    3: 0.18        # thursday
+    4: 0.16        # friday
+    5: 0.05        # Limited hours - saturdays
+    6: 0.01        # Emergency only - sunday
+  
+  # Day of month zones
+  day_of_month:
+    early_month:        # Days 1-10
+      weight: 0.25
+      range: [1,10]
+    mid_month:          # Days 11-20
+      weight: 0.35
+      range: [11,20]
+    late_month:         # Days 21-31
+      weight: 0.40      # End of month rush
+      range: [21,31]
+
+  # Month of year distribution
+  month_of_year:
+    1: 0.06       # Post-holiday low (january)
+    2: 0.07
+    3: 0.09
+    4: 0.09
+    5: 0.10
+    6: 0.09
+    7: 0.08          # Summer dip
+    8: 0.07
+    9: 0.10     # Back to routine
+    10: 0.10
+    11: 0.09
+    12: 0.06      # Holiday low (december)
+
+# ============================================================================
+# GROWTH MODEL
+# ============================================================================
+
+growth_model:
+  type: "linear"
+  baseline_date: "2022-01-01"
+  baseline_volume: 50             # Studies per day at baseline
+  annual_growth_rate: 0.15        # 15% per year
+  daily_variation: 0.10           # ±10% random noise
+
+# ============================================================================
+# GENERATION SETTINGS
+# ============================================================================
+
+generation:
+  
+  static:
+    enabled: true
+    smaples: 1000
+    date_range:
+      start: "2022-01-01"
+      end: "2024-12-31"
+  
+  dynamic:
+    enabled: true
+    use_current_date: true
+    existing_patient_reuse_rate: 0.30  # 30% chance to reuse existing patient

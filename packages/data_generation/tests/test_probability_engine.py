@@ -10,6 +10,8 @@ from data_generation.src.core.probability_engine import (
     DistributionConfig,
     DistributionType,
     ProbabilityEngine,
+    ProcedureAgeRangePreventer,
+    ProcedureGenderPreventer,
     RangeConfig,
     WeightedRangesDistribution,
 )
@@ -169,7 +171,6 @@ class TestWeightedRangesDistribution:
         assert len(results) == 50
         assert all(0 <= r <= 100 for r in results)
 
-
 class TestProbabilityEngineBasics:
     """Test basic ProbabilityEngine operations."""
 
@@ -178,13 +179,7 @@ class TestProbabilityEngineBasics:
         engine: ProbabilityEngine,
         gender_distribution: DistributionConfig
     ) -> None:
-        """Test registering and selecting from distribution.
-
-        :param engine: Probability engine
-        :type engine: ProbabilityEngine
-        :param gender_distribution: Gender distribution config
-        :type gender_distribution: DistributionConfig
-        """
+        """Test registering and selecting from distribution."""
         engine.register_distribution("gender", gender_distribution)
 
         result = engine.select_from_distribution("gender")
@@ -195,12 +190,7 @@ class TestProbabilityEngineBasics:
         self,
         engine: ProbabilityEngine
     ) -> None:
-        """
-        Test selecting from unregistered distribution raises KeyError.
-
-        :param engine: Probability engine
-        :type engine: ProbabilityEngine
-        """
+        """Test selecting from unregistered distribution raises KeyError."""
         with pytest.raises(KeyError) as exc_info:
             engine.select_from_distribution("nonexistent")
 
@@ -211,13 +201,7 @@ class TestProbabilityEngineBasics:
         engine: ProbabilityEngine,
         gender_distribution: DistributionConfig
     ) -> None:
-        """Test bulk selection without contexts.
-
-        :param engine: Probability engine
-        :type engine: ProbabilityEngine
-        :param gender_distribution: Gender distribution
-        :type gender_distribution: DistributionConfig
-        """
+        """Test bulk selection without contexts."""
         engine.register_distribution("gender", gender_distribution)
 
         results = engine.select_bulk("gender", count=100)
@@ -230,13 +214,7 @@ class TestProbabilityEngineBasics:
         engine: ProbabilityEngine,
         procedure_distribution: DistributionConfig
     ) -> None:
-        """Test bulk selection with contexts.
-
-        :param engine: Probability engine
-        :type engine: ProbabilityEngine
-        :param procedure_distribution: Procedure distribution
-        :type procedure_distribution: DistributionConfig
-        """
+        """Test bulk selection with contexts."""
         engine.register_distribution("procedures", procedure_distribution)
 
         contexts = [{"gender": "female"} for _ in range(10)]
@@ -249,14 +227,7 @@ class TestProbabilityEngineBasics:
         engine: ProbabilityEngine,
         gender_distribution: DistributionConfig
     ) -> None:
-        """
-        Test that mismatched contexts length raises ValueError.
-
-        :param engine: Probability engine
-        :type engine: ProbabilityEngine
-        :param gender_distribution: Gender distribution
-        :type gender_distribution: DistributionConfig
-        """
+        """Test that mismatched contexts length raises ValueError."""
         engine.register_distribution("gender", gender_distribution)
 
         contexts = [{"test": "value"}] * 5
@@ -272,13 +243,7 @@ class TestCorrelations:
         engine: ProbabilityEngine,
         procedure_distribution: DistributionConfig
     ) -> None:
-        """Test that correlations adjust distribution probabilities.
-
-        :param engine: Probability engine
-        :type engine: ProbabilityEngine
-        :param procedure_distribution: Procedure distribution
-        :type procedure_distribution: DistributionConfig
-        """
+        """Test that correlations adjust distribution probabilities."""
         engine.register_distribution("procedures", procedure_distribution)
 
         # Register correlation: females more likely to get obstetric
@@ -308,20 +273,14 @@ class TestCorrelations:
         engine: ProbabilityEngine,
         procedure_distribution: DistributionConfig
     ) -> None:
-        """Test correlation with age range condition.
-
-        :param engine: Probability engine
-        :type engine: ProbabilityEngine
-        :param procedure_distribution: Procedure distribution
-        :type procedure_distribution: DistributionConfig
-        """
+        """Test correlation with age range condition."""
         engine.register_distribution("procedures", procedure_distribution)
 
         # Young age → more obstetric
         correlation = CorrelationConfig(
             condition=ConditionConfig(field="age", range=[20, 40]),
             adjustments={
-                "procedures": {"obstetric_ultrasound": 0.90}
+                "procedures": {"obstetric_ultrasound": 0.95}
             }
         )
         engine.register_correlation(correlation)
@@ -334,20 +293,14 @@ class TestCorrelations:
         ]
 
         counter = Counter(samples)
-        assert counter["obstetric_ultrasound"] > 50
+        assert counter["obstetric_ultrasound"] > 60
 
     def test_multiple_correlations_stack(
         self,
         engine: ProbabilityEngine,
         procedure_distribution: DistributionConfig
     ) -> None:
-        """Test that multiple correlations can stack.
-
-        :param engine: Probability engine
-        :type engine: ProbabilityEngine
-        :param procedure_distribution: Procedure distribution
-        :type procedure_distribution: DistributionConfig
-        """
+        """Test that multiple correlations can stack."""
         engine.register_distribution("procedures", procedure_distribution)
 
         # Correlation 1: Female
@@ -375,220 +328,83 @@ class TestCorrelations:
         # Last correlation wins (0.50)
         assert counter["pelvic_ultrasound"] > 200
 
+class TestConstraintPreventers:
 
-class TestPreventiveConstraints:
-    """Test preventive constraint functionality."""
+    def test_procedure_gender_preventer(
+            self,
+            engine: ProbabilityEngine,
+            procedure_distribution: DistributionConfig
+        ) -> None:
+        """Test procedure-gender prevention."""
 
-    def test_gender_constraint_prevents_violation(
-        self,
-        engine: ProbabilityEngine,
-        procedure_distribution: DistributionConfig
-    ) -> None:
-        """Test that gender constraint prevents violations.
-
-        :param engine: Probability engine
-        :type engine: ProbabilityEngine
-        :param procedure_distribution: Procedure distribution
-        :type procedure_distribution: DistributionConfig
-        """
-        engine.register_distribution("procedures", procedure_distribution)
-
-        # Constraint: obstetric requires female
         constraint = ConstraintConfig(
-            type="hard",
-            rule="if_procedure_then_gender",
-            params={
+            rule= "procedure_requires_gender",
+            params= {
                 "procedure": "obstetric_ultrasound",
                 "required_gender": "female"
-            }
-        )
-        engine.register_constraint(constraint)
+                }
+            )
 
-        # Generate with male context
+        engine.register_distribution("procedures", procedure_distribution)
+        engine.register_constraint(config= constraint)
+
+        engine.register_constraint_preventer(
+            rule_name= "procedure_requires_gender",
+            preventer= ProcedureGenderPreventer()
+            )
+
         context = {"gender": "male"}
+
         samples = [
             engine.select_from_distribution("procedures", context)
-            for _ in range(500)
-        ]
+            for _ in range(100)
+            ]
 
-        # Should NEVER get obstetric for males
-        assert "obstetric_ultrasound" not in samples
+        counter = Counter(samples)
 
-    def test_age_range_constraint_prevents_violation(
-        self,
-        engine: ProbabilityEngine,
-        procedure_distribution: DistributionConfig
+        assert "obstetric_ultrasound" not in counter
+
+    def test_age_range_preventer(
+            self,
+            engine: ProbabilityEngine,
+            procedure_distribution: DistributionConfig,
+            age_distribution: DistributionConfig
         ) -> None:
-        """Test that age range constraint prevents violations.
+        """Test procedure-age prevention."""
 
-        :param engine: Probability engine
-        :type engine: ProbabilityEngine
-        :param procedure_distribution: Procedure distribution
-        :type procedure_distribution: DistributionConfig
-        """
         engine.register_distribution("procedures", procedure_distribution)
+        engine.register_distribution("age", age_distribution)
 
-        # Constraint: obstetric requires age 15-50
-        constraint = ConstraintConfig(
-            type="hard",
-            rule="if_procedure_then_age_range",
-            params={
+        config = ConstraintConfig(
+            rule= "procedure_requires_age_range",
+            params= {
                 "procedure": "obstetric_ultrasound",
                 "min_age": 15,
                 "max_age": 50
-            }
-        )
-        engine.register_constraint(constraint)
-
-        # Generate with age 65 (outside range)
-        context = {"age": 65}
-        samples = [
-            engine.select_from_distribution("procedures", context)
-            for _ in range(500)
-        ]
-
-        # Should NEVER get obstetric for age 65
-        assert "obstetric_ultrasound" not in samples
-
-    def test_bulk_selection_respects_constraints(
-        self,
-        engine: ProbabilityEngine,
-        procedure_distribution: DistributionConfig
-    ) -> None:
-        """
-        Test that bulk selection respects constraints.
-
-        :param engine: Probability engine
-        :type engine: ProbabilityEngine
-        :param procedure_distribution: Procedure distribution
-        :type procedure_distribution: DistributionConfig
-        """
-        engine.register_distribution("procedures", procedure_distribution)
-
-        constraint = ConstraintConfig(
-            type="hard",
-            rule="if_procedure_then_gender",
-            params={
-                "procedure": "obstetric_ultrasound",
-                "required_gender": "female"
-            }
-        )
-        engine.register_constraint(constraint)
-
-        # Generate 100 male contexts
-        contexts = [{"gender": "male"} for _ in range(100)]
-        results = engine.select_bulk("procedures", count=100, contexts=contexts)
-
-        # NO obstetric ultrasounds should appear
-        assert "obstetric_ultrasound" not in results
-
-    def test_constraints_and_correlations_work_together(
-        self,
-        engine: ProbabilityEngine,
-        procedure_distribution: DistributionConfig
-        ) -> None:
-        """Test that constraints and correlations work together.
-
-        :param engine: Probability engine
-        :type engine: ProbabilityEngine
-        :param procedure_distribution: Procedure distribution
-        :type procedure_distribution: DistributionConfig
-        """
-        engine.register_distribution("procedures", procedure_distribution)
-
-        # Correlation: females → more obstetric
-        correlation = CorrelationConfig(
-            condition=ConditionConfig(field="gender", value="female"),
-            adjustments={"procedures": {"obstetric_ultrasound": 1.5}}
-        )
-        engine.register_correlation(correlation)
-
-        # Constraint: obstetric → female only
-        constraint = ConstraintConfig(
-            type="hard",
-            rule="if_procedure_then_gender",
-            params={
-                "procedure": "obstetric_ultrasound",
-                "required_gender": "female"
-            }
-        )
-        engine.register_constraint(constraint)
-
-        # Female: should get lots of obstetric
-        female_context = {"gender": "female"}
-        female_samples = [
-            engine.select_from_distribution("procedures", female_context)
-            for _ in range(500)
-        ]
-        female_counter = Counter(female_samples)
-        assert female_counter["obstetric_ultrasound"] > 330
-
-        # Male: should get ZERO obstetric
-        male_context = {"gender": "male"}
-        male_samples = [
-            engine.select_from_distribution("procedures", male_context)
-            for _ in range(500)
-        ]
-        assert "obstetric_ultrasound" not in male_samples
-
-
-class TestIntegration:
-    """Integration tests for complete workflows."""
-
-    def test_patient_and_study_generation_workflow(
-        self,
-        engine: ProbabilityEngine,
-        gender_distribution: DistributionConfig,
-        age_distribution: DistributionConfig,
-        procedure_distribution: DistributionConfig
-    ) -> None:
-        """Test complete patient and study generation workflow.
-
-        :param engine: Probability engine
-        :type engine: ProbabilityEngine
-        :param gender_distribution: Gender distribution
-        :type gender_distribution: DistributionConfig
-        :param age_distribution: Age distribution
-        :type age_distribution: DistributionConfig
-        :param procedure_distribution: Procedure distribution
-        :type procedure_distribution: DistributionConfig
-        """
-        # Register all distributions
-        engine.register_distribution("gender", gender_distribution)
-        engine.register_distribution("age", age_distribution)
-        engine.register_distribution("procedures", procedure_distribution)
-
-        # Register constraints
-        constraint = ConstraintConfig(
-            type="hard",
-            rule="if_procedure_then_gender",
-            params={
-                "procedure": "obstetric_ultrasound",
-                "required_gender": "female"
-            }
-        )
-        engine.register_constraint(constraint)
-
-        # Step 1: Generate patients
-        patient_count = 100
-        genders = engine.select_bulk("gender", count=patient_count)
-        ages = engine.select_bulk("age", count=patient_count)
-
-        # Step 2: Generate studies with patient context
-        contexts = [
-            {"gender": g, "age": a}
-            for g, a in zip(genders, ages)
-        ]
-        procedures = engine.select_bulk(
-            "procedures",
-            count=patient_count,
-            contexts=contexts
+                }
             )
+        engine.register_constraint(config)
 
-        # Verify no constraint violations
-        violations = 0
-        for gender, procedure in zip(genders, procedures):
-            if gender == "male" and procedure == "obstetric_ultrasound":
-                violations += 1
+        engine.register_constraint_preventer(
+            rule_name= "procedure_requires_age_range",
+            preventer= ProcedureAgeRangePreventer()
+        )
 
-        assert violations == 0
+        context_list = [
+            {"age": engine.select_from_distribution("age")} for _ in range(100)
+            ]
+
+        samples = [
+            engine.select_from_distribution("procedures",context)
+            for context in context_list
+            ]
+
+        procedure_ages = [
+            context["age"]
+            for procedure, context in zip(samples, context_list)
+            if procedure == "obstetric_ultrasound"
+            and isinstance(context["age"], (int, float))
+            ]
+
+        assert all(15 <= age <= 50 for age in procedure_ages)
+

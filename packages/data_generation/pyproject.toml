@@ -3,4 +3,6 @@ name = "data-generation"
 version = "0.1.0"
 description = "Synthetic study data generation engine for ultrasound clinic simulation"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "pydantic>=2.12.4"
+]
